@@ -1,0 +1,936 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Mark personal training days and record what each client trained.">
+<meta name="robots" content="noindex">
+<style>html{color-scheme:light}body{margin:0}[hidden]{display:none!important}</style>
+<title>PT Session Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F3F4F7; --surface:#FFFFFF; --surface-2:#F7F8FA; --ink:#17202E; --muted:#5A6476; --line:#DDE1E8;
+  --accent:#5B2CB8; --accent-ink:#FFFFFF; --accent-soft:#EEE8FA;
+  --done:#127A5B; --done-bg:#DDF3EA; --miss:#B42318; --miss-bg:#FCE4E1; --canc:#7A5200; --canc-bg:#FFF1CC;
+  --err:#B42318; --ok:#127A5B;
+  --display:'Baloo 2','Trebuchet MS',system-ui,sans-serif;
+  --body:'Figtree',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#10131A; --surface:#181D27; --surface-2:#1F2532; --ink:#E8EBF2; --muted:#9AA3B8; --line:#2D3445;
+    --accent:#B49AF5; --accent-ink:#10131A; --accent-soft:#2B2645;
+    --done:#5FD3A7; --done-bg:#163A2F; --miss:#FF8A7A; --miss-bg:#432019; --canc:#F3D58A; --canc-bg:#3A2F12;
+    --err:#FF8A7A; --ok:#5FD3A7;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#10131A; --surface:#181D27; --surface-2:#1F2532; --ink:#E8EBF2; --muted:#9AA3B8; --line:#2D3445;
+  --accent:#B49AF5; --accent-ink:#10131A; --accent-soft:#2B2645;
+  --done:#5FD3A7; --done-bg:#163A2F; --miss:#FF8A7A; --miss-bg:#432019; --canc:#F3D58A; --canc-bg:#3A2F12;
+  --err:#FF8A7A; --ok:#5FD3A7;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:20px}
+@media (max-width:600px){.wrap{padding-inline:16px}}
+a{color:var(--accent)}
+
+.top{padding-block:20px 6px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;gap:12px;align-items:center;min-width:0}
+.logo{flex:none;width:44px;height:44px;border-radius:12px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center}
+h1{font-family:var(--display);font-weight:700;font-size:28px;line-height:1.05;margin:0}
+.top p{margin:2px 0 0;color:var(--muted);font-size:14px}
+h2{font-family:var(--display);font-weight:700;font-size:20px;line-height:1.2;margin:0}
+h3{font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:0}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.cols{display:grid;grid-template-columns:300px 1fr;gap:18px;align-items:start;margin-block:16px 40px}
+.cols.single{grid-template-columns:1fr}
+@media (max-width:860px){
+  .cols{grid-template-columns:1fr}
+  .cols.picked #clientPane{display:none}
+  .cols:not(.picked):not(.single) #detail{display:none}
+}
+@media (min-width:861px){.back-btn{display:none!important}}
+
+.btn{font:inherit;font-weight:600;font-size:14px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:9px;padding:8px 14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--err)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.small{padding:5px 10px;font-size:13px}
+.btn.wa{background:#1F9E55;border-color:#1F9E55;color:#fff}
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field>label,.lbl{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+input[type=text],input[type=tel],input[type=date],input[type=number],input[type=url],input[type=search],textarea{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;min-width:0}
+textarea{resize:vertical}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.status{margin:0;font-size:13.5px;color:var(--muted);min-height:1em}
+.status.err{color:var(--err)} .status.ok{color:var(--ok)}
+.hint{margin:0;font-size:13.5px;color:var(--muted)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.spacer{flex:1}
+
+/* Setup */
+#setup{margin-block:16px 40px;display:grid;gap:16px;grid-template-columns:1.4fr 1fr;align-items:start}
+@media (max-width:860px){#setup{grid-template-columns:1fr}}
+.card{padding:18px;display:flex;flex-direction:column;gap:12px}
+.card ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px}
+
+/* Client list */
+#clientPane{padding:14px;display:flex;flex-direction:column;gap:10px;position:sticky;top:12px}
+@media (max-width:860px){#clientPane{position:static}}
+.clist{display:flex;flex-direction:column;gap:4px;max-height:60vh;overflow:auto;margin:0;padding:0;list-style:none}
+@media (max-width:860px){.clist{max-height:none}}
+.citem{width:100%;text-align:left;font:inherit;color:var(--ink);background:none;border:1px solid transparent;border-radius:10px;padding:8px 10px;cursor:pointer;display:flex;gap:10px;align-items:center}
+.citem:hover{background:var(--surface-2)}
+.citem[aria-current="true"]{background:var(--accent-soft);border-color:var(--accent)}
+.avatar{flex:none;width:34px;height:34px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:700;font-size:14px}
+.citem b{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.citem small{display:block;color:var(--muted);font-size:12.5px}
+.empty{padding:28px 18px;text-align:center;color:var(--muted)}
+
+/* Detail */
+#detail{padding:18px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.dhead{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.dhead .who{flex:1;min-width:0}
+.dhead .who p{margin:0;color:var(--muted);font-size:13.5px}
+.mnav{display:flex;align-items:center;gap:6px}
+.mnav span{font-weight:700;font-family:var(--display);font-size:18px;min-width:150px;text-align:center}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:4px;margin-right:5px;vertical-align:-1px}
+
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cal .dow{font-size:12px;font-weight:600;color:var(--muted);text-align:center;padding-bottom:2px}
+.day{font:inherit;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:9px;min-height:64px;padding:4px 6px;text-align:left;display:flex;flex-direction:column;gap:2px;cursor:pointer;min-width:0}
+.day:hover{border-color:var(--accent)}
+.day .n{font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
+.day .t{font-size:11.5px;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word}
+.day.today{box-shadow:inset 0 0 0 2px var(--accent)}
+.day.pad{visibility:hidden}
+.day.done{background:var(--done-bg);border-color:transparent;color:var(--done)}
+.day.missed{background:var(--miss-bg);border-color:transparent;color:var(--miss)}
+.day.cancelled{background:var(--canc-bg);border-color:transparent;color:var(--canc)}
+.day.sun .n{color:var(--err)}
+.day.done .n,.day.missed .n,.day.cancelled .n{color:inherit}
+@media (max-width:600px){.day{min-height:48px;padding:3px 4px}.day .t{font-size:10.5px;-webkit-line-clamp:1}}
+
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+@media (max-width:600px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stat{background:var(--surface-2);border-radius:10px;padding:10px 12px}
+.stat b{display:block;font-family:var(--display);font-size:24px;line-height:1.1}
+.stat span{font-size:12.5px;color:var(--muted)}
+.stat.done b{color:var(--done)} .stat.missed b{color:var(--miss)} .stat.cancelled b{color:var(--canc)}
+.tally{display:flex;gap:6px;flex-wrap:wrap}
+.tag{display:inline-block;background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:2px 10px;font-size:13px;font-weight:600}
+.tag.plain{background:var(--surface-2);color:var(--ink);font-weight:500}
+
+.slist{display:flex;flex-direction:column;gap:8px}
+.scard{border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;background:var(--surface);text-align:left;font:inherit;color:var(--ink);width:100%}
+button.scard{cursor:pointer}
+button.scard:hover{border-color:var(--accent)}
+.scard.flash{animation:flash 1.4s ease}
+@keyframes flash{0%,40%{box-shadow:0 0 0 3px var(--accent)}100%{box-shadow:none}}
+.scard .top2{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.scard .date{font-weight:700}
+.pill{font-size:12px;font-weight:700;border-radius:999px;padding:1px 9px}
+.pill.done{background:var(--done-bg);color:var(--done)} .pill.missed{background:var(--miss-bg);color:var(--miss)} .pill.cancelled{background:var(--canc-bg);color:var(--canc)}
+.scard ul{margin:0;padding-left:18px;font-size:14px}
+.scard .note{font-size:14px;color:var(--muted);white-space:pre-wrap}
+
+/* Dialogs */
+dialog{border:0;border-radius:16px;padding:0;background:var(--surface);color:var(--ink);width:min(560px,calc(100vw - 24px));max-height:calc(100dvh - 24px)}
+dialog::backdrop{background:rgba(8,10,20,.55)}
+dialog form{display:flex;flex-direction:column;gap:14px;padding:18px}
+.dlg-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;position:sticky;bottom:-18px;background:var(--surface);padding-block:10px;margin-bottom:-8px}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{flex:1;font:inherit;font-size:14px;font-weight:600;border:0;background:var(--surface);color:var(--muted);padding:9px 6px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"][data-v="done"]{background:var(--done-bg);color:var(--done)}
+.seg button[aria-pressed="true"][data-v="missed"]{background:var(--miss-bg);color:var(--miss)}
+.seg button[aria-pressed="true"][data-v="cancelled"]{background:var(--canc-bg);color:var(--canc)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;font-size:14px;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 12px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.exrow{display:grid;grid-template-columns:1fr 62px 72px 72px 34px;gap:6px;align-items:center}
+.exhead{font-size:11.5px;color:var(--muted);font-weight:600}
+@media (max-width:520px){.exrow{grid-template-columns:1fr 1fr 1fr 34px}.exrow .exname{grid-column:1/-1}.exhead{display:none}}
+.exrow input{padding:7px 8px}
+.x{font:inherit;border:0;background:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;padding:4px}
+.x:hover{color:var(--err)}
+.linkbox{font-size:13px;word-break:break-all;background:var(--surface-2);border-radius:8px;padding:8px 10px}
+.banner{background:var(--canc-bg);color:var(--canc);border-radius:10px;padding:8px 12px;font-size:13.5px}
+
+/* Printed report */
+#report{display:none}
+@media print{
+  @page{size:A4 portrait;margin:12mm}
+  html,body{background:#fff;color:#111}
+  body>*:not(#report){display:none!important}
+  #report{display:block;font-family:var(--body);font-size:11pt;color:#111}
+  #report *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+.rp-head{display:flex;justify-content:space-between;gap:16px;border-bottom:2px solid #5B2CB8;padding-bottom:8px;margin-bottom:10px}
+.rp-gym{font-family:var(--display);font-weight:700;font-size:22pt;line-height:1;color:#5B2CB8}
+.rp-head .r{text-align:right;font-size:10.5pt}
+.rp-stats{display:flex;gap:18px;margin:8px 0 10px;font-size:11pt}
+.rp-stats b{font-size:14pt}
+.rp-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:12px}
+.rp-cal div{border:1px solid #ccc;border-radius:4px;min-height:34px;padding:2px 4px;font-size:8.5pt;line-height:1.2}
+.rp-cal .h{border:0;min-height:0;text-align:center;font-weight:700}
+.rp-cal .p{border:0}
+.rp-cal .done{background:#DDF3EA;border-color:#9ED8C1}
+.rp-cal .missed{background:#FCE4E1;border-color:#F2B2AA}
+.rp-cal .cancelled{background:#FFF1CC;border-color:#EBD38A}
+.rp-tbl{border-collapse:collapse;width:100%;font-size:9.5pt}
+.rp-tbl th,.rp-tbl td{border:1px solid #ccc;padding:4px 6px;text-align:left;vertical-align:top}
+.rp-tbl th{background:#f1eefa}
+.rp-tbl tr{break-inside:avoid}
+.rp-foot{margin-top:10px;font-size:9pt;color:#555}
+</style>
+</head>
+<body>
+
+<header class="wrap top">
+  <div class="brand">
+    <div class="logo" aria-hidden="true">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg>
+    </div>
+    <div>
+      <h1 id="gymName"></h1>
+      <p id="tagline"></p>
+    </div>
+  </div>
+  <button class="btn small" type="button" id="settingsBtn" hidden>Settings</button>
+</header>
+
+<main class="wrap">
+  <p id="loadMsg" class="status" role="status" style="margin-top:16px"></p>
+
+  <!-- First-time setup / settings -->
+  <section id="setup" hidden>
+    <div class="panel card">
+      <h2>Connect your Google Sheet</h2>
+      <p class="hint">Records are kept in a Google Sheet in your own Google account, so you can open the tracker on any phone or laptop, and clients can open their own link.</p>
+      <details>
+        <summary style="cursor:pointer;font-weight:600">How to make the Google Sheet (one time, about 10 minutes)</summary>
+        <ol style="margin-top:8px">
+          <li>Sign in to Google, open <a href="https://sheets.new" target="_blank" rel="noopener">sheets.new</a> and name the sheet <b>PT Tracker</b>.</li>
+          <li>Click <b>Extensions → Apps Script</b>. Delete what's there and paste in the code from <a id="codeLink" href="https://github.com/aanchi3005-lgtm/pt-tracker/blob/main/apps-script/Code.gs" target="_blank" rel="noopener">Code.gs</a>. Click 💾 Save.</li>
+          <li>At the top, choose <b>setup</b> and click <b>▶ Run</b>. Allow access when Google asks (click <i>Advanced → Go to project</i>).</li>
+          <li>Copy the <b>trainer key</b> shown in the Execution log at the bottom.</li>
+          <li>Click <b>Deploy → New deployment</b> → ⚙ <b>Web app</b>. Set <i>Execute as: Me</i> and <i>Who has access: Anyone</i>. Click <b>Deploy</b> and copy the <b>Web app URL</b>.</li>
+          <li>Paste both below and tap <b>Connect</b>.</li>
+        </ol>
+      </details>
+      <div class="field"><label for="apiIn">Web app URL</label><input id="apiIn" type="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></div>
+      <div class="field"><label for="keyIn">Trainer key</label><input id="keyIn" type="text" autocomplete="off" spellcheck="false"></div>
+      <div class="row"><button class="btn primary" type="button" id="connectBtn">Connect</button><button class="btn" type="button" id="setupBack" hidden>Back</button></div>
+      <p class="status" id="setupMsg" role="status"></p>
+    </div>
+    <div class="panel card">
+      <h2 id="localTitle">Just try it first</h2>
+      <p class="hint">Use the tracker on this device only, with no Google Sheet. Records stay in this browser. Client links won't work until you connect a Google Sheet.</p>
+      <button class="btn" type="button" id="localBtn">Try on this device</button>
+      <hr style="border:0;border-top:1px solid var(--line);width:100%;margin:4px 0">
+      <h3>Backup</h3>
+      <p class="hint">Save all records to a file, or load records from a backup file.</p>
+      <div class="row">
+        <button class="btn small" type="button" id="backupBtn">Save backup file</button>
+        <button class="btn small" type="button" id="restoreBtn">Load backup file</button>
+        <input type="file" id="restoreIn" accept=".json,application/json" hidden>
+      </div>
+      <div id="trainerLinkBox" hidden>
+        <hr style="border:0;border-top:1px solid var(--line);width:100%;margin:4px 0">
+        <h3>Open on another phone or laptop</h3>
+        <p class="hint">Send yourself this link and open it on the other device. Keep it private: anyone with it can change every record.</p>
+        <div class="row"><button class="btn small" type="button" id="copyTrainerLink">Copy my trainer link</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main app -->
+  <div class="cols" id="app" hidden>
+    <aside class="panel" id="clientPane" aria-label="Clients">
+      <div class="row"><h2 class="spacer">Clients</h2><button class="btn small primary" type="button" id="addClientBtn">+ Add client</button></div>
+      <input type="search" id="searchIn" placeholder="Search by name" aria-label="Search clients">
+      <ul class="clist" id="clist"></ul>
+    </aside>
+    <section class="panel" id="detail" aria-live="polite"></section>
+  </div>
+</main>
+
+<div id="report"></div>
+
+<!-- Training day dialog -->
+<dialog id="sessionDlg" aria-labelledby="sdTitle">
+  <form id="sessionForm" method="dialog">
+    <div class="row"><h2 id="sdTitle" class="spacer">Training day</h2><button type="button" class="x" data-close aria-label="Close">×</button></div>
+    <div class="field"><label for="sdDate">Date</label><input type="date" id="sdDate" required></div>
+    <div class="field"><span class="lbl" id="sdStatusLbl">Status</span>
+      <div class="seg" id="sdStatus" role="group" aria-labelledby="sdStatusLbl">
+        <button type="button" data-v="done">✓ Done</button><button type="button" data-v="missed">✗ Missed</button><button type="button" data-v="cancelled">– Cancelled</button>
+      </div>
+    </div>
+    <div id="sdDoneBits" class="field" style="gap:14px">
+      <div class="field"><span class="lbl">Body parts trained</span><div class="chips" id="sdParts"></div>
+        <input type="text" id="sdOther" placeholder="Other body parts (e.g. Calves, Neck)" autocomplete="off"></div>
+      <div class="field"><span class="lbl">Training type</span><div class="chips" id="sdTypes"></div></div>
+      <div class="field"><span class="lbl">Exercises</span>
+        <div class="exrow exhead" aria-hidden="true"><span>Exercise</span><span>Sets</span><span>Reps</span><span>kg</span><span></span></div>
+        <div id="sdEx" class="field" style="gap:6px"></div>
+        <div class="row"><button type="button" class="btn small" id="sdAddEx">+ Add exercise</button><button type="button" class="btn small" id="sdRepeat">Copy last workout</button></div>
+      </div>
+      <div class="grid2"><div class="field"><label for="sdWeight">Client's body weight (kg)</label><input type="number" id="sdWeight" inputmode="decimal" step="0.1" min="0" placeholder="Optional"></div></div>
+    </div>
+    <div class="field"><label for="sdNotes">Notes</label><textarea id="sdNotes" rows="2" placeholder="e.g. knee pain, skipped squats"></textarea></div>
+    <p class="status" id="sdMsg" role="status"></p>
+    <div class="dlg-actions">
+      <button type="button" class="btn danger" id="sdDelete">Delete</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn" data-close>Cancel</button>
+      <button type="submit" class="btn primary" id="sdSave">Save</button>
+    </div>
+  </form>
+</dialog>
+<datalist id="exList"></datalist>
+
+<!-- Client dialog -->
+<dialog id="clientDlg" aria-labelledby="cdTitle">
+  <form id="clientForm" method="dialog">
+    <div class="row"><h2 id="cdTitle" class="spacer">Client</h2><button type="button" class="x" data-close aria-label="Close">×</button></div>
+    <div class="field"><label for="cdName">Name</label><input type="text" id="cdName" required autocomplete="off"></div>
+    <div class="grid2">
+      <div class="field"><label for="cdPhone">WhatsApp number</label><input type="tel" id="cdPhone" placeholder="98765 43210" autocomplete="off"></div>
+      <div class="field"><label for="cdStart">Start date</label><input type="date" id="cdStart"></div>
+    </div>
+    <p class="status" id="cdMsg" role="status"></p>
+    <div class="dlg-actions">
+      <button type="button" class="btn danger" id="cdDelete">Delete client</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn" data-close>Cancel</button>
+      <button type="submit" class="btn primary" id="cdSave">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Share dialog -->
+<dialog id="shareDlg" aria-labelledby="shTitle">
+  <form method="dialog">
+    <div class="row"><h2 id="shTitle" class="spacer">Client's link</h2><button type="button" class="x" data-close aria-label="Close">×</button></div>
+    <p class="hint" id="shHint"></p>
+    <div class="linkbox" id="shLink"></div>
+    <div class="row">
+      <a class="btn wa" id="shWa" target="_blank" rel="noopener">Send on WhatsApp</a>
+      <button type="button" class="btn" id="shCopy">Copy link</button>
+    </div>
+    <p class="status" id="shMsg" role="status"></p>
+    <details><summary style="cursor:pointer;font-size:13.5px;color:var(--muted)">Link shared by mistake?</summary>
+      <p class="hint" style="margin-top:6px">Make a new link. The old link stops working straight away.</p>
+      <button type="button" class="btn small danger" id="shNew" style="margin-top:6px">Make a new link</button>
+    </details>
+  </form>
+</dialog>
+
+<script>
+(function(){
+// ================= Settings you can change =================
+const CONFIG = {
+  gym: 'Planet Fitness',
+  trainer: 'Pradeep Gahlot',
+  bodyParts: ['Shoulders','Back','Glutes','Legs','Chest','Arms','Core / Abs','Full body'],
+  trainingTypes: ['Strength','Cardio','HIIT','Functional','Stretching / Mobility','Warm-up'],
+  exercises: ['Bench press','Incline dumbbell press','Push-ups','Chest fly','Cable crossover','Pull-ups','Lat pulldown','Seated row','Bent-over row','Deadlift','Back extension','Shoulder press','Lateral raise','Front raise','Rear delt fly','Shrugs','Squat','Leg press','Lunges','Leg extension','Leg curl','Romanian deadlift','Calf raise','Hip thrust','Glute bridge','Cable kickback','Bulgarian split squat','Bicep curl','Hammer curl','Tricep pushdown','Skull crushers','Dips','Plank','Crunches','Leg raises','Russian twist','Treadmill','Cycling','Rowing machine','Skipping','Burpees','Kettlebell swing','Stretching'],
+};
+// ===========================================================
+
+const STATUS = {done:'Done', missed:'Missed', cancelled:'Cancelled'};
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DOW = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const CFG_KEY = 'pt-tracker-config', LOCAL_KEY = 'pt-tracker-data';
+
+const $ = s => document.querySelector(s);
+const store = {
+  get(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} },
+};
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2,'0');
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parseYmd = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
+const niceDate = (s, o) => parseYmd(s).toLocaleDateString('en-IN', o || {weekday:'short', day:'numeric', month:'short'});
+function rid(n){
+  const a = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const b = new Uint32Array(n); crypto.getRandomValues(b);
+  return Array.from(b, x => a[x % a.length]).join('');
+}
+const initials = name => name.trim().split(/\s+/).slice(0,2).map(w => w[0]).join('').toUpperCase() || '?';
+function setMsg(el, text, kind){ el.textContent = text || ''; el.className = 'status' + (kind ? ' ' + kind : ''); }
+
+$('#gymName').textContent = CONFIG.gym;
+$('#tagline').textContent = `Personal training · Trainer: ${CONFIG.trainer}`;
+
+// ================= Data access =================
+// Trainer mode talks to the Google Sheet with the trainer key (or to this browser in "this device" mode).
+// Client mode talks to the Google Sheet with the client's own link code.
+let cfg = store.get(CFG_KEY);
+
+async function sheetCall(url, body){
+  let res;
+  try{ res = await fetch(url, {method:'POST', body: JSON.stringify(body)}); }
+  catch(e){ throw new Error('Could not reach the Google Sheet. Check the internet connection and try again.'); }
+  let data;
+  try{ data = await res.json(); }catch(e){ throw new Error('The Google Sheet did not answer properly. Check the Web app URL and that access is set to "Anyone".'); }
+  if(!data.ok) throw new Error(data.error || 'Something went wrong.');
+  return data;
+}
+
+function localCall(body){
+  const db = store.get(LOCAL_KEY) || {clients:[], sessions:[]};
+  const upsert = (list, item) => { const i = list.findIndex(x => x.id === item.id); if(i >= 0) list[i] = item; else list.push(item); };
+  const save = () => { if(!store.set(LOCAL_KEY, db)) throw new Error('This browser is not saving data (maybe a private window). Connect a Google Sheet instead.'); };
+  switch(body.action){
+    case 'ping': return {ok:true};
+    case 'load': return {ok:true, clients:db.clients, sessions:db.sessions};
+    case 'saveClient': upsert(db.clients, body.client); save(); return {ok:true, client:body.client};
+    case 'deleteClient': db.clients = db.clients.filter(c => c.id !== body.id); db.sessions = db.sessions.filter(s => s.clientId !== body.id); save(); return {ok:true};
+    case 'saveSession': upsert(db.sessions, body.session); save(); return {ok:true, session:body.session};
+    case 'deleteSession': db.sessions = db.sessions.filter(s => s.id !== body.id); save(); return {ok:true};
+    case 'import': body.clients.forEach(c => upsert(db.clients, c)); body.sessions.forEach(s => upsert(db.sessions, s)); save(); return {ok:true, clients:db.clients.length, sessions:db.sessions.length};
+  }
+  throw new Error('Unknown action');
+}
+
+// One function for every change, whoever is using the page.
+async function api(body){
+  if(S.view) return sheetCall(S.view.api, {...body, action: body.action === 'saveSession' ? 'clientSaveSession' : 'clientDeleteSession', token: S.view.token});
+  if(cfg.mode === 'local') return localCall(body);
+  return sheetCall(cfg.api, {...body, key: cfg.key});
+}
+
+// ================= State =================
+const today = new Date();
+const S = {
+  clients: [], sessions: [], selId: null,
+  y: today.getFullYear(), m: today.getMonth(),
+  view: null,          // {token, api} when a client opens their link
+  canEdit: true,
+  editing: null,       // session being edited
+};
+const sel = () => S.clients.find(c => c.id === S.selId);
+const sessionsOf = id => S.sessions.filter(s => s.clientId === id).sort((a,b) => a.date < b.date ? -1 : 1);
+
+// ================= Start-up =================
+const hash = new URLSearchParams(location.hash.slice(1));
+if(hash.get('trainer') && hash.get('api')){
+  // Trainer link: set this device up with no typing.
+  cfg = {mode:'sheet', api: hash.get('api'), key: hash.get('trainer')};
+  store.set(CFG_KEY, cfg);
+  history.replaceState(null, '', location.pathname + location.search);
+  startTrainer();
+} else if(hash.get('c') && hash.get('api')){
+  S.view = {token: hash.get('c'), api: hash.get('api')};
+  startClient();
+} else if(cfg && cfg.mode){
+  startTrainer();
+} else {
+  showSetup(false);
+}
+
+async function startTrainer(){
+  $('#setup').hidden = true;
+  $('#settingsBtn').hidden = false;
+  setMsg($('#loadMsg'), cfg.mode === 'local' ? '' : 'Loading records from the Google Sheet…');
+  try{
+    const data = await api({action:'load'});
+    S.clients = data.clients || []; S.sessions = data.sessions || [];
+    setMsg($('#loadMsg'), cfg.mode === 'local' ? 'Using this device only. Records are saved in this browser. Connect a Google Sheet in Settings to use client links.' : '');
+    $('#app').hidden = false;
+    if(!S.selId && S.clients.length && matchMedia('(min-width:861px)').matches) S.selId = sortedClients()[0].id;
+    renderAll();
+  }catch(e){
+    $('#loadMsg').innerHTML = `<span style="color:var(--err)">${esc(e.message)}</span> <button class="btn small" type="button" id="retryBtn">Try again</button> <button class="btn small" type="button" id="toSettings">Settings</button>`;
+    $('#retryBtn').onclick = startTrainer;
+    $('#toSettings').onclick = () => showSetup(true);
+  }
+}
+
+async function startClient(){
+  setMsg($('#loadMsg'), 'Loading your training record…');
+  try{
+    const data = await sheetCall(S.view.api, {action:'view', token:S.view.token});
+    S.clients = [data.client]; S.sessions = data.sessions || []; S.selId = data.client.id; S.canEdit = !!data.canEdit;
+    setMsg($('#loadMsg'), '');
+    $('#clientPane').hidden = true;
+    $('#app').classList.add('single');
+    $('#app').hidden = false;
+    renderDetail();
+  }catch(e){
+    setMsg($('#loadMsg'), e.message, 'err');
+  }
+}
+
+// ================= Setup / settings =================
+function showSetup(fromApp){
+  $('#app').hidden = true;
+  setMsg($('#loadMsg'), '');
+  $('#setup').hidden = false;
+  $('#setupBack').hidden = !fromApp || !cfg;
+  $('#apiIn').value = cfg && cfg.mode === 'sheet' ? cfg.api : '';
+  $('#keyIn').value = cfg && cfg.mode === 'sheet' ? cfg.key : '';
+  $('#localBtn').hidden = !!(cfg && cfg.mode === 'local');
+  $('#localTitle').textContent = cfg && cfg.mode === 'local' ? 'Using this device only' : 'Just try it first';
+  $('#trainerLinkBox').hidden = !(cfg && cfg.mode === 'sheet');
+  setMsg($('#setupMsg'), '');
+}
+$('#settingsBtn').onclick = () => showSetup(true);
+$('#setupBack').onclick = () => { $('#setup').hidden = true; startTrainer(); };
+
+$('#connectBtn').onclick = async () => {
+  const url = $('#apiIn').value.trim(), key = $('#keyIn').value.trim();
+  if(!/^https:\/\/script\.google(usercontent)?\.com\//.test(url)){ setMsg($('#setupMsg'), 'The Web app URL should start with https://script.google.com/', 'err'); return; }
+  if(!key){ setMsg($('#setupMsg'), 'Paste the trainer key from the Apps Script Execution log.', 'err'); return; }
+  setMsg($('#setupMsg'), 'Connecting…');
+  $('#connectBtn').disabled = true;
+  try{
+    await sheetCall(url, {action:'ping', key});
+    // Move records made in "this device" mode into the sheet.
+    const local = store.get(LOCAL_KEY);
+    if(local && local.clients && local.clients.length && confirm(`Copy the ${local.clients.length} client(s) saved on this device into the Google Sheet?`)){
+      setMsg($('#setupMsg'), 'Copying records…');
+      await sheetCall(url, {action:'import', key, clients:local.clients, sessions:local.sessions});
+      store.del(LOCAL_KEY);
+    }
+    cfg = {mode:'sheet', api:url, key};
+    store.set(CFG_KEY, cfg);
+    startTrainer();
+  }catch(e){
+    setMsg($('#setupMsg'), e.message, 'err');
+  }finally{
+    $('#connectBtn').disabled = false;
+  }
+};
+$('#localBtn').onclick = () => {
+  cfg = {mode:'local'};
+  if(!store.set(CFG_KEY, cfg)) alert('This browser is not saving data (maybe a private window). Records will be lost when you close it.');
+  startTrainer();
+};
+$('#copyTrainerLink').onclick = () => copyText(trainerLink(), $('#setupMsg'), 'Trainer link copied. Keep it private.');
+const baseUrl = () => location.origin + location.pathname;
+const trainerLink = () => `${baseUrl()}#trainer=${encodeURIComponent(cfg.key)}&api=${encodeURIComponent(cfg.api)}`;
+
+$('#backupBtn').onclick = async () => {
+  try{
+    const data = cfg ? await api({action:'load'}) : (store.get(LOCAL_KEY) || {clients:[], sessions:[]});
+    const blob = new Blob([JSON.stringify({app:'pt-tracker', saved:new Date().toISOString(), clients:data.clients, sessions:data.sessions}, null, 1)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = `pt-tracker-backup-${ymd(new Date())}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    setMsg($('#setupMsg'), 'Backup file saved.', 'ok');
+  }catch(e){ setMsg($('#setupMsg'), e.message, 'err'); }
+};
+$('#restoreBtn').onclick = () => {
+  if(!cfg){ setMsg($('#setupMsg'), 'Connect a Google Sheet or tap "Try on this device" first, then load the backup.', 'err'); return; }
+  $('#restoreIn').click();
+};
+$('#restoreIn').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if(!f) return;
+  try{
+    const data = JSON.parse(await f.text());
+    if(!Array.isArray(data.clients) || !Array.isArray(data.sessions)) throw new Error('This is not a PT Tracker backup file.');
+    if(!confirm(`Load ${data.clients.length} client(s) and ${data.sessions.length} training day(s) from this file? Records with the same ID will be replaced.`)) return;
+    setMsg($('#setupMsg'), 'Loading backup…');
+    await api({action:'import', clients:data.clients, sessions:data.sessions});
+    setMsg($('#setupMsg'), 'Backup loaded.', 'ok');
+  }catch(err){ setMsg($('#setupMsg'), err.message || 'Could not read that file.', 'err'); }
+};
+
+// ================= Rendering =================
+function sortedClients(){ return [...S.clients].sort((a,b) => a.name.localeCompare(b.name)); }
+
+function renderAll(){ renderClients(); renderDetail(); }
+
+function renderClients(){
+  const q = $('#searchIn').value.trim().toLowerCase();
+  const list = sortedClients().filter(c => !q || c.name.toLowerCase().includes(q));
+  if(!S.clients.length){
+    $('#clist').innerHTML = `<li class="empty">No clients yet.<br>Tap <b>+ Add client</b> to start.</li>`;
+    return;
+  }
+  $('#clist').innerHTML = list.map(c => {
+    const ss = sessionsOf(c.id).filter(s => s.status === 'done');
+    const last = ss.length ? `Last: ${niceDate(ss[ss.length-1].date, {day:'numeric', month:'short'})} · ` : '';
+    return `<li><button type="button" class="citem" data-id="${esc(c.id)}" aria-current="${c.id === S.selId}">
+      <span class="avatar" aria-hidden="true">${esc(initials(c.name))}</span>
+      <span style="min-width:0"><b>${esc(c.name)}</b><small>${last}${ss.length} session${ss.length === 1 ? '' : 's'} done</small></span></button></li>`;
+  }).join('') || `<li class="empty">No client matches “${esc(q)}”.</li>`;
+}
+$('#searchIn').oninput = renderClients;
+$('#clist').onclick = e => {
+  const b = e.target.closest('.citem'); if(!b) return;
+  S.selId = b.dataset.id;
+  renderAll();
+  $('#app').classList.add('picked');
+  window.scrollTo({top:0});
+};
+
+function monthSessions(c){
+  const prefix = `${S.y}-${pad(S.m+1)}-`;
+  return sessionsOf(c.id).filter(s => s.date.startsWith(prefix));
+}
+function dayLabel(s){
+  if(s.status === 'done') return [...s.parts, ...(s.parts.length ? [] : s.types)].join(', ') || '✓';
+  return STATUS[s.status];
+}
+
+function renderDetail(){
+  const c = sel();
+  const d = $('#detail');
+  $('#app').classList.toggle('picked', !!c && !S.view);
+  if(!c){
+    d.innerHTML = `<div class="empty"><h2>Welcome, ${esc(CONFIG.trainer.split(' ')[0])}</h2><p>${S.clients.length ? 'Pick a client to see their training calendar.' : 'Add your first client to start marking training days.'}</p></div>`;
+    return;
+  }
+  const edit = !S.view || S.canEdit;
+  const ms = monthSessions(c);
+  const byDate = Object.fromEntries(ms.map(s => [s.date, s]));
+  const count = st => ms.filter(s => s.status === st).length;
+  const allDone = sessionsOf(c.id).filter(s => s.status === 'done').length;
+
+  // Body parts trained this month
+  const tally = {};
+  ms.filter(s => s.status === 'done').forEach(s => s.parts.forEach(p => tally[p] = (tally[p] || 0) + 1));
+  const tallyHtml = Object.entries(tally).sort((a,b) => b[1]-a[1]).map(([p,n]) => `<span class="tag">${esc(p)} × ${n}</span>`).join('') || '<span class="hint">Nothing recorded this month yet.</span>';
+
+  // Body weight
+  const weights = sessionsOf(c.id).filter(s => s.bodyWeight);
+  const w = weights.length ? weights[weights.length-1].bodyWeight : '';
+
+  // Calendar
+  const first = new Date(S.y, S.m, 1), days = new Date(S.y, S.m+1, 0).getDate();
+  const offset = (first.getDay() + 6) % 7;
+  let cal = DOW.map(x => `<div class="dow">${x}</div>`).join('');
+  for(let i = 0; i < offset; i++) cal += `<div class="day pad" aria-hidden="true"></div>`;
+  const todayStr = ymd(today);
+  for(let n = 1; n <= days; n++){
+    const ds = `${S.y}-${pad(S.m+1)}-${pad(n)}`, s = byDate[ds];
+    const dow = (offset + n - 1) % 7;
+    const cls = ['day', s ? s.status : '', ds === todayStr ? 'today' : '', dow === 6 ? 'sun' : ''].join(' ');
+    const label = s ? `${niceDate(ds)}: ${STATUS[s.status]}${s.parts.length ? ', ' + s.parts.join(', ') : ''}` : `${niceDate(ds)}${edit ? ': add training day' : ''}`;
+    cal += `<button type="button" class="${cls}" data-date="${ds}" aria-label="${esc(label)}"><span class="n">${n}</span>${s ? `<span class="t">${esc(dayLabel(s))}</span>` : ''}</button>`;
+  }
+
+  // Session cards (newest first)
+  const cards = [...ms].reverse().map(s => {
+    const ex = s.exercises.filter(x => x.name).map(x => {
+      const bits = [x.sets && x.reps ? `${x.sets} × ${x.reps}` : x.sets ? `${x.sets} sets` : x.reps ? `${x.reps} reps` : '', x.weight ? `@ ${x.weight} kg` : ''].filter(Boolean).join(' ');
+      return `<li>${esc(x.name)}${bits ? ' — ' + esc(bits) : ''}</li>`;
+    }).join('');
+    const tag = edit ? 'button type="button"' : 'div';
+    return `<${tag} class="scard" id="s-${s.date}" data-date="${s.date}">
+      <span class="top2"><span class="date">${esc(niceDate(s.date, {weekday:'short', day:'numeric', month:'short'}))}</span><span class="pill ${s.status}">${STATUS[s.status]}</span>
+        ${s.bodyWeight ? `<span class="tag plain">⚖ ${esc(s.bodyWeight)} kg</span>` : ''}</span>
+      ${s.parts.length || s.types.length ? `<span class="tally">${s.parts.map(p => `<span class="tag">${esc(p)}</span>`).join('')}${s.types.map(t => `<span class="tag plain">${esc(t)}</span>`).join('')}</span>` : ''}
+      ${ex ? `<ul>${ex}</ul>` : ''}
+      ${s.notes ? `<span class="note">${esc(s.notes)}</span>` : ''}
+    </${edit ? 'button' : 'div'}>`;
+  }).join('') || `<p class="hint">No training days in ${MONTHS[S.m]} yet.${edit ? ' Tap a date on the calendar to add one.' : ''}</p>`;
+
+  d.innerHTML = `
+    <div class="dhead">
+      ${S.view ? '' : '<button type="button" class="btn small back-btn" data-act="back">‹ Clients</button>'}
+      <div class="who"><h2>${S.view ? 'Hi, ' : ''}${esc(c.name)}</h2>
+        <p>${[c.phone && !S.view ? esc(c.phone) : '', c.start ? 'Since ' + esc(niceDate(c.start, {day:'numeric', month:'short', year:'numeric'})) : '', `${allDone} session${allDone === 1 ? '' : 's'} done in total`].filter(Boolean).join(' · ')}</p></div>
+      ${S.view ? '' : '<button type="button" class="btn small" data-act="editClient">Edit</button>'}
+    </div>
+    <div class="row">
+      <div class="mnav"><button class="btn small" type="button" data-act="prev" aria-label="Previous month">‹</button><span>${MONTHS[S.m]} ${S.y}</span><button class="btn small" type="button" data-act="next" aria-label="Next month">›</button></div>
+      <button class="btn small" type="button" data-act="thisMonth">Today</button>
+      <span class="spacer"></span>
+      <div class="legend"><span><i style="background:var(--done-bg);border:1px solid var(--done)"></i>Done</span><span><i style="background:var(--miss-bg);border:1px solid var(--miss)"></i>Missed</span><span><i style="background:var(--canc-bg);border:1px solid var(--canc)"></i>Cancelled</span></div>
+    </div>
+    <div class="cal">${cal}</div>
+    <div class="row">
+      ${edit ? '<button class="btn primary" type="button" data-act="addToday">+ Mark today</button>' : ''}
+      ${S.view ? '' : '<button class="btn" type="button" data-act="share">Share client link</button>'}
+      <button class="btn" type="button" data-act="print">Print / PDF report</button>
+    </div>
+    <div class="stats">
+      <div class="stat done"><b>${count('done')}</b><span>Done in ${MONTHS[S.m].slice(0,3)}</span></div>
+      <div class="stat missed"><b>${count('missed')}</b><span>Missed</span></div>
+      <div class="stat cancelled"><b>${count('cancelled')}</b><span>Cancelled</span></div>
+      <div class="stat"><b>${w ? esc(w) : '–'}</b><span>Latest body weight (kg)</span></div>
+    </div>
+    <div class="field"><h3>Body parts trained in ${MONTHS[S.m]}</h3><div class="tally">${tallyHtml}</div></div>
+    <div class="field"><h3>Training days</h3><div class="slist">${cards}</div></div>`;
+}
+
+$('#detail').onclick = e => {
+  const t = e.target.closest('[data-act],[data-date]'); if(!t) return;
+  const act = t.dataset.act, c = sel();
+  if(t.dataset.date){
+    const edit = !S.view || S.canEdit;
+    if(edit) openSession(c, t.dataset.date);
+    else { const card = document.getElementById('s-' + t.dataset.date); if(card){ card.scrollIntoView({behavior:'smooth', block:'center'}); card.classList.remove('flash'); void card.offsetWidth; card.classList.add('flash'); } }
+    return;
+  }
+  if(act === 'prev'){ if(--S.m < 0){ S.m = 11; S.y--; } renderDetail(); }
+  else if(act === 'next'){ if(++S.m > 11){ S.m = 0; S.y++; } renderDetail(); }
+  else if(act === 'thisMonth'){ S.y = today.getFullYear(); S.m = today.getMonth(); renderDetail(); }
+  else if(act === 'addToday') openSession(c, ymd(new Date()));
+  else if(act === 'editClient') openClient(c);
+  else if(act === 'share') openShare(c);
+  else if(act === 'print') printReport(c);
+  else if(act === 'back'){ S.selId = null; renderAll(); }
+};
+
+// ================= Training day dialog =================
+const sdlg = $('#sessionDlg');
+const chipHtml = (list, picked) => list.map(v => `<button type="button" class="chip" aria-pressed="${picked.includes(v)}">${esc(v)}</button>`).join('');
+$('#exList').innerHTML = CONFIG.exercises.map(x => `<option value="${esc(x)}">`).join('');
+function exRow(x){
+  const div = document.createElement('div');
+  div.className = 'exrow';
+  div.innerHTML = `<input class="exname" type="text" list="exList" placeholder="Exercise" aria-label="Exercise" value="${esc(x.name)}">
+    <input type="text" inputmode="numeric" placeholder="Sets" aria-label="Sets" value="${esc(x.sets)}">
+    <input type="text" placeholder="Reps" aria-label="Reps" value="${esc(x.reps)}">
+    <input type="text" inputmode="decimal" placeholder="kg" aria-label="Weight in kg" value="${esc(x.weight)}">
+    <button type="button" class="x" aria-label="Remove exercise">×</button>`;
+  div.querySelector('.x').onclick = () => div.remove();
+  return div;
+}
+function setStatus(v){
+  sdlg.querySelectorAll('#sdStatus button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === v));
+  $('#sdDoneBits').hidden = v !== 'done';
+}
+$('#sdStatus').onclick = e => { const b = e.target.closest('button'); if(b) setStatus(b.dataset.v); };
+['#sdParts','#sdTypes'].forEach(id => $(id).onclick = e => { const b = e.target.closest('.chip'); if(b) b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true'); });
+$('#sdAddEx').onclick = () => { const r = exRow({}); $('#sdEx').appendChild(r); r.querySelector('input').focus(); };
+
+function fillSession(s){
+  const known = s.parts.filter(p => CONFIG.bodyParts.includes(p));
+  $('#sdParts').innerHTML = chipHtml(CONFIG.bodyParts, known);
+  $('#sdOther').value = s.parts.filter(p => !CONFIG.bodyParts.includes(p)).join(', ');
+  const types = [...CONFIG.trainingTypes, ...s.types.filter(t => !CONFIG.trainingTypes.includes(t))];
+  $('#sdTypes').innerHTML = chipHtml(types, s.types);
+  $('#sdEx').innerHTML = '';
+  (s.exercises.length ? s.exercises : [{}]).forEach(x => $('#sdEx').appendChild(exRow(x)));
+}
+
+function openSession(c, date){
+  const existing = S.sessions.find(s => s.clientId === c.id && s.date === date);
+  const s = existing || {id:'', clientId:c.id, date, status:'done', parts:[], types:[], exercises:[], bodyWeight:'', notes:''};
+  S.editing = {client:c, orig: existing || null};
+  $('#sdTitle').textContent = existing ? 'Edit training day' : 'Add training day';
+  $('#sdDate').value = date;
+  setStatus(s.status);
+  fillSession(s);
+  $('#sdWeight').value = s.bodyWeight;
+  $('#sdNotes').value = s.notes;
+  $('#sdDelete').hidden = !existing;
+  setMsg($('#sdMsg'), '');
+  sdlg.showModal();
+}
+
+$('#sdRepeat').onclick = () => {
+  const {client} = S.editing, date = $('#sdDate').value;
+  const prev = sessionsOf(client.id).filter(s => s.status === 'done' && s.date < date).pop();
+  if(!prev){ setMsg($('#sdMsg'), 'No earlier workout to copy.'); return; }
+  fillSession({...prev});
+  setMsg($('#sdMsg'), `Copied the workout from ${niceDate(prev.date)}. Change anything that's different today.`, 'ok');
+};
+
+function readSessionForm(){
+  const {client} = S.editing;
+  const date = $('#sdDate').value;
+  const status = sdlg.querySelector('#sdStatus [aria-pressed="true"]').dataset.v;
+  const picked = id => [...$(id).querySelectorAll('.chip[aria-pressed="true"]')].map(b => b.textContent);
+  const other = $('#sdOther').value.split(',').map(x => x.trim()).filter(Boolean);
+  const exercises = [...$('#sdEx').querySelectorAll('.exrow')].map(r => {
+    const [name, sets, reps, weight] = [...r.querySelectorAll('input')].map(i => i.value.trim());
+    return {name, sets, reps, weight};
+  }).filter(x => x.name);
+  const done = status === 'done';
+  return {
+    id: `${client.id}_${date}`, clientId: client.id, date, status,
+    parts: done ? [...picked('#sdParts'), ...other] : [],
+    types: done ? picked('#sdTypes') : [],
+    exercises: done ? exercises : [],
+    bodyWeight: done ? $('#sdWeight').value.trim() : '',
+    notes: $('#sdNotes').value.trim(),
+  };
+}
+
+$('#sessionForm').onsubmit = async e => {
+  e.preventDefault();
+  const s = readSessionForm(), {orig} = S.editing;
+  if(!s.date){ setMsg($('#sdMsg'), 'Pick a date.', 'err'); return; }
+  const clash = S.sessions.find(x => x.id === s.id);
+  if(clash && (!orig || orig.id !== s.id) && !confirm(`${niceDate(s.date)} already has a training day. Replace it?`)) return;
+  setMsg($('#sdMsg'), 'Saving…');
+  $('#sdSave').disabled = true;
+  try{
+    await api({action:'saveSession', session:s});
+    if(orig && orig.id !== s.id) await api({action:'deleteSession', id:orig.id});
+    S.sessions = S.sessions.filter(x => x.id !== s.id && (!orig || x.id !== orig.id));
+    S.sessions.push(s);
+    const d = parseYmd(s.date); S.y = d.getFullYear(); S.m = d.getMonth();
+    sdlg.close();
+    S.view ? renderDetail() : renderAll();
+  }catch(err){ setMsg($('#sdMsg'), err.message, 'err'); }
+  finally{ $('#sdSave').disabled = false; }
+};
+
+$('#sdDelete').onclick = async () => {
+  const {orig} = S.editing;
+  if(!orig || !confirm(`Delete the training day on ${niceDate(orig.date)}?`)) return;
+  setMsg($('#sdMsg'), 'Deleting…');
+  try{
+    await api({action:'deleteSession', id:orig.id});
+    S.sessions = S.sessions.filter(x => x.id !== orig.id);
+    sdlg.close();
+    S.view ? renderDetail() : renderAll();
+  }catch(err){ setMsg($('#sdMsg'), err.message, 'err'); }
+};
+
+// ================= Client dialog =================
+const cdlg = $('#clientDlg');
+let editingClient = null;
+function openClient(c){
+  editingClient = c || null;
+  $('#cdTitle').textContent = c ? 'Edit client' : 'New client';
+  $('#cdName').value = c ? c.name : '';
+  $('#cdPhone').value = c ? c.phone : '';
+  $('#cdStart').value = c ? c.start : ymd(new Date());
+  $('#cdDelete').hidden = !c;
+  setMsg($('#cdMsg'), '');
+  cdlg.showModal();
+}
+$('#addClientBtn').onclick = () => openClient(null);
+$('#clientForm').onsubmit = async e => {
+  e.preventDefault();
+  const name = $('#cdName').value.trim();
+  if(!name){ setMsg($('#cdMsg'), 'Type the client’s name.', 'err'); return; }
+  const c = editingClient
+    ? {...editingClient, name, phone:$('#cdPhone').value.trim(), start:$('#cdStart').value}
+    : {id: rid(10), token: rid(24), name, phone:$('#cdPhone').value.trim(), start:$('#cdStart').value, created: ymd(new Date())};
+  setMsg($('#cdMsg'), 'Saving…'); $('#cdSave').disabled = true;
+  try{
+    await api({action:'saveClient', client:c});
+    S.clients = S.clients.filter(x => x.id !== c.id); S.clients.push(c);
+    S.selId = c.id;
+    cdlg.close(); renderAll();
+  }catch(err){ setMsg($('#cdMsg'), err.message, 'err'); }
+  finally{ $('#cdSave').disabled = false; }
+};
+$('#cdDelete').onclick = async () => {
+  const c = editingClient;
+  if(!c || !confirm(`Delete ${c.name} and all their training days? This cannot be undone.`)) return;
+  setMsg($('#cdMsg'), 'Deleting…');
+  try{
+    await api({action:'deleteClient', id:c.id});
+    S.clients = S.clients.filter(x => x.id !== c.id);
+    S.sessions = S.sessions.filter(s => s.clientId !== c.id);
+    S.selId = null;
+    cdlg.close(); renderAll();
+  }catch(err){ setMsg($('#cdMsg'), err.message, 'err'); }
+};
+
+// ================= Share dialog =================
+const shdlg = $('#shareDlg');
+const clientLink = c => `${baseUrl()}#c=${encodeURIComponent(c.token)}&api=${encodeURIComponent(cfg.api)}`;
+function waNumber(phone){
+  let d = String(phone || '').replace(/\D/g, '');
+  if(d.length === 11 && d[0] === '0') d = d.slice(1);
+  if(d.length === 10) d = '91' + d;   // Indian mobile number without country code
+  return d;
+}
+function fillShare(c){
+  const link = clientLink(c);
+  $('#shLink').textContent = link;
+  const text = `Hi ${c.name}, here is your personal training record at ${CONFIG.gym}. You can see and update your training days here: ${link}`;
+  $('#shWa').href = `https://wa.me/${waNumber(c.phone)}?text=${encodeURIComponent(text)}`;
+}
+function openShare(c){
+  setMsg($('#shMsg'), '');
+  if(cfg.mode !== 'sheet'){
+    $('#shHint').textContent = 'Client links need the Google Sheet. Open Settings and connect it first.';
+    $('#shLink').textContent = ''; $('#shWa').hidden = true; $('#shCopy').hidden = true; $('#shNew').closest('details').hidden = true;
+  } else {
+    $('#shHint').textContent = `${c.name} can open this link to see their calendar and training days, and add or change their own days. No password is needed, and they can't see other clients.`;
+    $('#shWa').hidden = false; $('#shCopy').hidden = false; $('#shNew').closest('details').hidden = false;
+    fillShare(c);
+  }
+  shdlg.showModal();
+}
+$('#shCopy').onclick = () => copyText($('#shLink').textContent, $('#shMsg'), 'Link copied.');
+$('#shNew').onclick = async () => {
+  const c = sel();
+  if(!confirm(`Make a new link for ${c.name}? The old link will stop working.`)) return;
+  const updated = {...c, token: rid(24)};
+  setMsg($('#shMsg'), 'Making a new link…');
+  try{
+    await api({action:'saveClient', client:updated});
+    S.clients = S.clients.map(x => x.id === c.id ? updated : x);
+    fillShare(updated);
+    setMsg($('#shMsg'), 'New link ready. Send it to the client again.', 'ok');
+  }catch(err){ setMsg($('#shMsg'), err.message, 'err'); }
+};
+async function copyText(text, msgEl, okMsg){
+  try{ await navigator.clipboard.writeText(text); setMsg(msgEl, okMsg, 'ok'); }
+  catch(e){ prompt('Copy this link:', text); }
+}
+
+// Close buttons and tapping outside a dialog
+document.querySelectorAll('dialog').forEach(dlg => {
+  dlg.addEventListener('click', e => { if(e.target === dlg || e.target.closest('[data-close]')) dlg.close(); });
+});
+
+// ================= Printed monthly report =================
+function printReport(c){
+  const ms = monthSessions(c);
+  const byDate = Object.fromEntries(ms.map(s => [s.date, s]));
+  const count = st => ms.filter(s => s.status === st).length;
+  const weights = ms.filter(s => s.bodyWeight);
+  const wText = weights.length > 1 ? `${esc(weights[0].bodyWeight)} → ${esc(weights[weights.length-1].bodyWeight)} kg` : weights.length ? `${esc(weights[0].bodyWeight)} kg` : '–';
+  const tally = {};
+  ms.filter(s => s.status === 'done').forEach(s => s.parts.forEach(p => tally[p] = (tally[p] || 0) + 1));
+
+  const first = new Date(S.y, S.m, 1), days = new Date(S.y, S.m+1, 0).getDate(), offset = (first.getDay()+6) % 7;
+  let cal = DOW.map(x => `<div class="h">${x}</div>`).join('') + '<div class="p"></div>'.repeat(offset);
+  for(let n = 1; n <= days; n++){
+    const s = byDate[`${S.y}-${pad(S.m+1)}-${pad(n)}`];
+    cal += `<div class="${s ? s.status : ''}"><b>${n}</b>${s ? '<br>' + esc(dayLabel(s)) : ''}</div>`;
+  }
+  const rows = ms.map(s => `<tr><td>${esc(niceDate(s.date))}</td><td>${STATUS[s.status]}</td><td>${esc(s.parts.join(', '))}</td><td>${esc(s.types.join(', '))}</td>
+    <td>${s.exercises.map(x => esc(`${x.name}${x.sets || x.reps ? ` ${x.sets || '?'}×${x.reps || '?'}` : ''}${x.weight ? ` @ ${x.weight} kg` : ''}`)).join('<br>')}</td>
+    <td>${esc(s.bodyWeight)}</td><td>${esc(s.notes)}</td></tr>`).join('');
+
+  $('#report').innerHTML = `
+    <div class="rp-head"><div><div class="rp-gym">${esc(CONFIG.gym)}</div><div>Personal training report</div></div>
+      <div class="r"><b>${esc(c.name)}</b><br>Trainer: ${esc(CONFIG.trainer)}<br>${MONTHS[S.m]} ${S.y}</div></div>
+    <div class="rp-stats"><span><b>${count('done')}</b> done</span><span><b>${count('missed')}</b> missed</span><span><b>${count('cancelled')}</b> cancelled</span><span>Body weight: <b>${wText}</b></span></div>
+    ${Object.keys(tally).length ? `<p style="margin:0 0 8px">Body parts: ${Object.entries(tally).sort((a,b) => b[1]-a[1]).map(([p,n]) => `${esc(p)} × ${n}`).join(' · ')}</p>` : ''}
+    <div class="rp-cal">${cal}</div>
+    ${rows ? `<table class="rp-tbl"><thead><tr><th>Date</th><th>Status</th><th>Body parts</th><th>Training</th><th>Exercises</th><th>kg</th><th>Notes</th></tr></thead><tbody>${rows}</tbody></table>` : '<p>No training days recorded this month.</p>'}
+    <p class="rp-foot">Printed ${new Date().toLocaleDateString('en-IN', {day:'numeric', month:'long', year:'numeric'})}</p>`;
+  document.title = `${c.name} - ${MONTHS[S.m]} ${S.y} - training report`;
+  window.print();
+  setTimeout(() => { document.title = 'PT Session Tracker'; }, 1000);
+}
+})();
+</script>
+</body>
+</html>
