@@ -2,7 +2,7 @@
 
 A simple website for **Pradeep Gahlot** (personal trainer, Planet Fitness) to mark personal training days for each client and note what was trained.
 
-**Live site:** https://aanchi3005-lgtm.github.io/pt-tracker/
+**Live site:** the link shown under **Settings → Pages** in this project.
 
 - Mark each day as **Done**, **Missed** or **Cancelled**
 - Note the **body parts** trained (Shoulders, Back, Glutes, Legs, Chest, Arms, Core / Abs, Full body, or type your own)
@@ -27,7 +27,7 @@ Do this signed in to the trainer's Gmail account.
 ### 2. Add the tracker code
 1. In the sheet, click **Extensions → Apps Script**.
 2. Delete everything in the editor.
-3. Open [`apps-script/Code.gs`](apps-script/Code.gs), click the **Copy raw file** button (two squares icon), and paste it into the editor.
+3. On the tracker website, open **How to make the Google Sheet** and tap **Copy the code** (or open [`apps-script/Code.gs`](apps-script/Code.gs) here and click the copy icon). Paste it into the editor.
 4. Click the **💾 Save** icon.
 
 ### 3. Run the setup once
@@ -43,7 +43,7 @@ Do this signed in to the trainer's Gmail account.
 4. Click **Deploy** and **copy the Web app URL** (it ends in `/exec`).
 
 ### 5. Connect the website
-1. Open the live site: https://aanchi3005-lgtm.github.io/pt-tracker/
+1. Open the live site (the link under **Settings → Pages**).
 2. Paste the **Web app URL** and the **trainer key**, then tap **Connect**.
 
 Done! 🎉
