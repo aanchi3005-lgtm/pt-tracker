@@ -1,9 +1,12 @@
 /**
  * PT Tracker – Google Sheet backend.
  *
- * Paste this whole file into Extensions → Apps Script of the trainer's Google Sheet.
- * Then run `setup` once, and deploy as a Web app (Execute as: Me, Who has access: Anyone).
- * Full steps are in README.md.
+ * Quick setup (about 5 minutes, done once by whoever sets it up):
+ *   1. On the tracker website, tap "Copy the code". In a new Google Sheet open
+ *      Extensions → Apps Script, paste over everything, and Save.
+ *   2. Deploy → New deployment → Web app. Who has access: Anyone. Deploy, and allow access.
+ *   3. Reload the sheet. Use the new "PT Tracker" menu → "Get trainer link",
+ *      and send that link to the trainer. Opening it sets up their phone.
  *
  * Two tabs are used:
  *   Clients  – one row per client
@@ -11,6 +14,9 @@
  * The trainer can read them like any spreadsheet. Edit with care: the first two
  * columns (ID, Client ID / Link code) tie everything together.
  */
+
+// Filled in automatically when the code is copied from the tracker website.
+var SITE_URL = '';
 
 var CLIENT_HEADERS = ['ID', 'Link code', 'Name', 'Phone', 'Start date', 'Added on'];
 var SESSION_HEADERS = ['ID', 'Client ID', 'Client name', 'Date', 'Status', 'Body parts',
@@ -21,7 +27,16 @@ var STATUS_LABEL = { done: 'Done', missed: 'Missed', cancelled: 'Cancelled' };
 // false = client links are view-only; only the trainer can change anything.
 var CLIENTS_CAN_EDIT = true;
 
-/** Run this once from the Apps Script editor. It creates the tabs and the trainer key. */
+/** Adds the "PT Tracker" menu to the sheet. */
+function onOpen() {
+  SpreadsheetApp.getUi().createMenu('PT Tracker')
+    .addItem('Get trainer link', 'showTrainerLink')
+    .addSeparator()
+    .addItem('Make a new trainer link (old one stops working)', 'newTrainerLinkMenu')
+    .addToUi();
+}
+
+/** Creates the tabs and the trainer key if they don't exist yet. Safe to run again. */
 function setup() {
   var ss = SpreadsheetApp.getActive();
   ensureSheet_(ss, 'Clients', CLIENT_HEADERS);
@@ -33,21 +48,90 @@ function setup() {
     props.setProperty('TRAINER_KEY', key);
   }
   Logger.log('Setup done. Your trainer key is:  ' + key);
+  return key;
 }
 
-/** Run this only if the trainer key has leaked. Every phone must then enter the new key. */
+/** Run this only if the trainer key has leaked. Every device must then open the new trainer link. */
 function newTrainerKey() {
   var key = randomKey_(24);
   PropertiesService.getScriptProperties().setProperty('TRAINER_KEY', key);
   Logger.log('New trainer key:  ' + key);
+  return key;
+}
+
+/** Menu: shows the one link that sets up the trainer's phone. */
+function showTrainerLink() {
+  var ui = SpreadsheetApp.getUi();
+  var key = setup();
+  var api = webAppUrl_();
+  if (!api) {
+    var answer = ui.prompt('One more step',
+      'Publish first: in Apps Script click Deploy → New deployment → Web app, set "Who has access" to Anyone, and Deploy.\n\n' +
+      'Then paste the Web app URL here (it ends in /exec):', ui.ButtonSet.OK_CANCEL);
+    if (answer.getSelectedButton() !== ui.Button.OK) return;
+    api = answer.getResponseText().trim();
+    if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(api)) {
+      ui.alert('That doesn\'t look like a Web app URL. It starts with https://script.google.com/ and ends with /exec. Please try again.');
+      return;
+    }
+    PropertiesService.getScriptProperties().setProperty('WEB_APP_URL', api);
+  }
+  var link = (SITE_URL || '') + '#trainer=' + encodeURIComponent(key) + '&api=' + encodeURIComponent(api);
+  ui.showModalDialog(HtmlService.createHtmlOutput(linkDialogHtml_(link, key, api)).setWidth(480).setHeight(SITE_URL ? 330 : 400), 'Trainer link');
+}
+
+function newTrainerLinkMenu() {
+  var ui = SpreadsheetApp.getUi();
+  var ok = ui.alert('Make a new trainer link?', 'The old trainer link stops working on every phone. You will need to send the new link again.', ui.ButtonSet.OK_CANCEL);
+  if (ok !== ui.Button.OK) return;
+  newTrainerKey();
+  showTrainerLink();
+}
+
+// The deployed /exec address: saved when the web app is first used, or asked for once.
+function webAppUrl_() {
+  var saved = PropertiesService.getScriptProperties().getProperty('WEB_APP_URL');
+  if (saved) return saved;
+  var url = '';
+  try { url = ScriptApp.getService().getUrl() || ''; } catch (e) {}
+  return /\/exec$/.test(url) ? url : '';
+}
+
+function rememberWebAppUrl_() {
+  try {
+    var url = ScriptApp.getService().getUrl() || '';
+    var props = PropertiesService.getScriptProperties();
+    if (/\/exec$/.test(url) && props.getProperty('WEB_APP_URL') !== url) props.setProperty('WEB_APP_URL', url);
+  } catch (e) {}
+}
+
+function linkDialogHtml_(link, key, api) {
+  var esc = function (v) { return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); };
+  var wa = 'https://wa.me/?text=' + encodeURIComponent('Your PT Session Tracker link. Open it on your phone and add it to your home screen. Keep it private: ' + link);
+  var body = SITE_URL
+    ? '<p>Send this link to the trainer. Opening it on their phone sets everything up. <b>Keep it private</b>: it works like a password.</p>' +
+      '<textarea id="l" readonly>' + esc(link) + '</textarea>' +
+      '<div class="row"><a class="btn wa" href="' + esc(wa) + '" target="_blank">Send on WhatsApp</a>' +
+      '<button class="btn" onclick="copy()">Copy link</button><span id="m"></span></div>'
+    : '<p>On the tracker website, paste these two into <b>Settings</b> and tap Connect. (To get a one-tap link instead, copy the code again with the website\'s "Copy the code" button.)</p>' +
+      '<label>Web app URL</label><textarea readonly>' + esc(api) + '</textarea>' +
+      '<label>Trainer key</label><textarea readonly style="height:38px">' + esc(key) + '</textarea>';
+  return '<style>body{font-family:Arial,sans-serif;font-size:14px;color:#1B1830;margin:0}p{margin:0 0 10px}' +
+    'textarea{width:100%;box-sizing:border-box;height:84px;font-size:12px;padding:8px;border:1px solid #ccc;border-radius:8px;margin-bottom:10px}' +
+    'label{font-weight:bold;font-size:12px}.row{display:flex;gap:8px;align-items:center}' +
+    '.btn{font:inherit;font-weight:bold;padding:8px 14px;border-radius:8px;border:1px solid #ccc;background:#fff;cursor:pointer;text-decoration:none;color:#1B1830}' +
+    '.wa{background:#1F9E55;border-color:#1F9E55;color:#fff}</style>' + body +
+    '<script>function copy(){var t=document.getElementById("l");t.select();document.execCommand("copy");document.getElementById("m").textContent="Copied";}</script>';
 }
 
 function doGet() {
-  return ContentService.createTextOutput('PT Tracker backend is running. Open the tracker website to use it.');
+  rememberWebAppUrl_();
+  return ContentService.createTextOutput('PT Tracker is published. Go back to your Google Sheet and use the PT Tracker menu → Get trainer link.');
 }
 
 function doPost(e) {
   var out;
+  rememberWebAppUrl_();
   try {
     var req = JSON.parse(e.postData.contents);
     out = route_(req) || {};
@@ -63,7 +147,7 @@ function route_(req) {
   if (req.action === 'clientSaveSession' || req.action === 'clientDeleteSession') return clientEdit_(req);
 
   var key = PropertiesService.getScriptProperties().getProperty('TRAINER_KEY');
-  if (!key) throw new Error('The Google Sheet is not set up yet. Run "setup" in Apps Script first.');
+  if (!key) throw new Error('The Google Sheet is not set up yet. In the sheet, use the PT Tracker menu → Get trainer link.');
   if (String(req.key || '') !== key) throw new Error('Wrong trainer key.');
 
   var lock = LockService.getScriptLock();
@@ -232,7 +316,7 @@ function ensureSheet_(ss, name, headers) {
 
 function sheet_(name) {
   var sh = SpreadsheetApp.getActive().getSheetByName(name);
-  if (!sh) throw new Error('The "' + name + '" tab is missing. Run "setup" in Apps Script.');
+  if (!sh) throw new Error('The "' + name + '" tab is missing. In the sheet, use the PT Tracker menu → Get trainer link to add it back.');
   return sh;
 }
 

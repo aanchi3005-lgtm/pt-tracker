@@ -85,6 +85,8 @@ textarea{resize:vertical}
 @media (max-width:860px){#setup{grid-template-columns:1fr}}
 .card{padding:18px;display:flex;flex-direction:column;gap:12px}
 .card ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px}
+.card ol.ssteps{gap:10px;font-size:14.5px}
+.ssteps li::marker{font-weight:700;color:var(--accent)}
 
 /* Client list */
 #clientPane{padding:14px;display:flex;flex-direction:column;gap:10px;position:sticky;top:12px}
@@ -219,23 +221,25 @@ dialog form{display:flex;flex-direction:column;gap:14px;padding:18px}
   <!-- First-time setup / settings -->
   <section id="setup" hidden>
     <div class="panel card">
-      <h2>Connect your Google Sheet</h2>
-      <p class="hint">Records are kept in a Google Sheet in your own Google account, so you can open the tracker on any phone or laptop, and clients can open their own link.</p>
-      <details>
-        <summary style="cursor:pointer;font-weight:600">How to make the Google Sheet (one time, about 10 minutes)</summary>
-        <ol style="margin-top:8px">
-          <li>Sign in to Google, open <a href="https://sheets.new" target="_blank" rel="noopener">sheets.new</a> and name the sheet <b>PT Tracker</b>.</li>
-          <li>Tap <button class="btn small" type="button" id="copyCodeBtn">Copy the code</button>. Then in the sheet click <b>Extensions → Apps Script</b>, delete what's there, paste, and click 💾 Save.</li>
-          <li>At the top, choose <b>setup</b> and click <b>▶ Run</b>. Allow access when Google asks (click <i>Advanced → Go to project</i>).</li>
-          <li>Copy the <b>trainer key</b> shown in the Execution log at the bottom.</li>
-          <li>Click <b>Deploy → New deployment</b> → ⚙ <b>Web app</b>. Set <i>Execute as: Me</i> and <i>Who has access: Anyone</i>. Click <b>Deploy</b> and copy the <b>Web app URL</b>.</li>
-          <li>Paste both below and tap <b>Connect</b>.</li>
-        </ol>
-      </details>
-      <div class="field"><label for="apiIn">Web app URL</label><input id="apiIn" type="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></div>
-      <div class="field"><label for="keyIn">Trainer key</label><input id="keyIn" type="text" autocomplete="off" spellcheck="false"></div>
-      <div class="row"><button class="btn primary" type="button" id="connectBtn">Connect</button><button class="btn" type="button" id="setupBack" hidden>Back</button></div>
+      <div class="banner" id="trainerBanner"><b>Trainer?</b> You don't need to set anything up. Open the trainer link you were sent on WhatsApp, and your phone is ready.</div>
+      <h2>Set up the tracker</h2>
+      <p class="hint">Done once by whoever sets it up, on a laptop, signed in to the Gmail account that will keep the records. About 5 minutes.</p>
+      <ol class="ssteps">
+        <li><b>Copy the code.</b> <button class="btn small primary" type="button" id="copyCodeBtn">Copy the code</button></li>
+        <li><b>Make the sheet.</b> Open <a href="https://sheets.new" target="_blank" rel="noopener">sheets.new</a>, then click <b>Extensions → Apps Script</b>. Delete what's there, paste, and click 💾 <b>Save</b>.</li>
+        <li><b>Publish it.</b> Click <b>Deploy → New deployment</b>, click ⚙ and pick <b>Web app</b>. Set <b>Who has access</b> to <b>Anyone</b>, then <b>Deploy</b>. When Google asks, allow access (<i>Advanced → Go to … (unsafe) → Allow</i>). Click the <b>Web app</b> link it shows once, then <b>Done</b>.</li>
+        <li><b>Send the trainer link.</b> Reload the Google Sheet. Use the new <b>PT Tracker</b> menu → <b>Get trainer link</b> → <b>Send on WhatsApp</b>.</li>
+      </ol>
       <p class="status" id="setupMsg" role="status"></p>
+      <details id="manualBox">
+        <summary style="cursor:pointer;font-weight:600">Connect by hand</summary>
+        <div class="field" style="margin-top:10px;gap:10px">
+          <div class="field"><label for="apiIn">Web app URL</label><input id="apiIn" type="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></div>
+          <div class="field"><label for="keyIn">Trainer key</label><input id="keyIn" type="text" autocomplete="off" spellcheck="false"></div>
+          <div class="row"><button class="btn primary" type="button" id="connectBtn">Connect</button></div>
+        </div>
+      </details>
+      <div class="row"><button class="btn" type="button" id="setupBack" hidden>Back</button></div>
     </div>
     <div class="panel card">
       <h2 id="localTitle">Just try it first</h2>
@@ -489,6 +493,8 @@ function showSetup(fromApp){
   $('#setup').hidden = false;
   loadCode().catch(() => {});
   $('#setupBack').hidden = !fromApp || !cfg;
+  $('#trainerBanner').hidden = !!fromApp;
+  $('#manualBox').open = !!(fromApp && cfg && cfg.mode === 'sheet');
   $('#apiIn').value = cfg && cfg.mode === 'sheet' ? cfg.api : '';
   $('#keyIn').value = cfg && cfg.mode === 'sheet' ? cfg.key : '';
   $('#localBtn').hidden = !!(cfg && cfg.mode === 'local');
@@ -532,7 +538,7 @@ function loadCode(){
 }
 $('#copyCodeBtn').onclick = async () => {
   let code;
-  try{ code = await loadCode(); }
+  try{ code = (await loadCode()).replace("var SITE_URL = '';", `var SITE_URL = '${baseUrl()}';`); }
   catch(e){ setMsg($('#setupMsg'), 'Could not load the code. Check the internet connection and try again.', 'err'); return; }
   try{
     await navigator.clipboard.writeText(code);
